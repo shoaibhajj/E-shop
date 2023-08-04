@@ -1,6 +1,5 @@
 //1) Core Module
 const path = require("path");
-const stripe = require("stripe")(process.env.STRIPE_SECRET);
 
 // 2) third party modules
 
@@ -38,7 +37,7 @@ app.use(compression());
 // );
 
 app.post(
-  "/webhook",
+  "/webhook-checkout",
   express.raw({ type: "application/json" }),
   webhookCheckout
 );
