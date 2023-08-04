@@ -4,7 +4,9 @@ const factory = require("./handlersFactory");
 const Order = require("../models/orderModel");
 const Cart = require("../models/cartModel");
 const ApiError = require("../utils/apiError");
+
 const Product = require("../models/productModel");
+const User = require("../models/userModel");
 
 // @desc    Create cash order
 // @route   Post  api/v1/orders/cartId
@@ -140,8 +142,8 @@ exports.checkoutSession = asyncHandler(async (req, res, next) => {
       },
     ],
     mode: "payment",
-    success_url: `${req.protocol}://${req.get("host")}/orders`,
-    cancel_url: `${req.protocol}://${req.get("host")}/cart`,
+    success_url: `${req.protocol}://${req.get("host")}/api/v1/orders`,
+    cancel_url: `${req.protocol}://${req.get("host")}/api/v1/cart`,
     customer_email: req.user.email,
 
     client_reference_id: req.params.cartId,
@@ -151,6 +153,39 @@ exports.checkoutSession = asyncHandler(async (req, res, next) => {
   // 4) send session to response
   res.status(200).json({ status: "success", session });
 });
+
+const createCardOrder = async (session) => {
+  const cartId = session.client_reference_id;
+  const shippingAddress = session.metadata;
+  const orderPrice = session.amount_total / 100;
+
+  const cart = await Cart.findById(cartId);
+  const user = await User.findOne({ email: session.customer_email });
+
+  // 3) Create order with default paymentMethodType  card
+  const order = await Order.create({
+    user: user._id,
+    cartItems: cart.cartItems,
+    shippingAddress,
+    totalOrderPrice: orderPrice,
+    isPaid: true,
+    paidAt: Date.now(),
+    paymentMethodType: "card",
+  });
+  // 4) After creating order decrement product quantity and increment product sold
+  if (order) {
+    const bulkOptions = await cart.cartItems.map((Item) => ({
+      updateOne: {
+        filter: { _id: Item.product },
+        update: { $inc: { quantity: -Item.quantity, sold: +Item.quantity } },
+      },
+    }));
+    await Product.bulkWrite(bulkOptions, {});
+
+    // 5) Clear cart depend on cartId
+    await Cart.findByIdAndDelete(cartId);
+  }
+};
 
 exports.webhookCheckout = asyncHandler(async (request, response) => {
   const endpointSecret = process.env.STRIPE_WEBHOOK_SECRET;
@@ -164,5 +199,9 @@ exports.webhookCheckout = asyncHandler(async (request, response) => {
     response.status(400).send(`Webhook Error: ${err.message}`);
     return;
   }
-  console.log(event);
+  if (event.type === "checkout.session.completed") {
+    // create Order
+    createCardOrder(event.data.object);
+  }
+  response.status(200).json({ recived: true });
 });
