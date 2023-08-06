@@ -11,6 +11,7 @@ E-shop integrates with Stripe to enable secure online payment using credit or de
 E-shop uses Cloudinary to store and serve product images.
 E-shop uses Mongoose as an object data modeling (ODM) library for MongoDB.
 E-shop follows the MVC (Model-View-Controller) design pattern and uses async/await syntax for asynchronous operations.
+
 Installation 💻
 
 To run E-shop locally, you need to have the following tools installed:
@@ -35,6 +36,7 @@ CLOUDINARY_API_KEY=your cloudinary api key
 CLOUDINARY_API_SECRET=your cloudinary api secret
 Copy
 Run the server: npm start 🚀
+
 Usage 🖥️
 
 Once the server is running, you can access the web app at http://localhost:5000. You can also access the API documentation at http://localhost:5000/api/docs.
